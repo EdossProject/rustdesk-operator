@@ -32,7 +32,7 @@ class DesktopHomePage extends StatefulWidget {
   State<DesktopHomePage> createState() => _DesktopHomePageState();
 }
 
-const borderColor = Color(0xFF2F65BA);
+const borderColor = MyTheme.accent;
 
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
@@ -78,7 +78,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildLeftPane(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
-    final children = <Widget>[
+    final header = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
       if (bind.isCustomClient())
         Align(
@@ -92,27 +92,27 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
-      FutureBuilder<Widget>(
-        future: Future.value(
-            Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
-        builder: (_, data) {
-          if (data.hasData) {
-            if (isIncomingOnly) {
-              if (isInHomePage()) {
-                Future.delayed(Duration(milliseconds: 300), () {
-                  _updateWindowSize();
-                });
-              }
-            }
-            return data.data!;
-          } else {
-            return const Offstage();
-          }
-        },
-      ),
     ];
-    if (isIncomingOnly) {
-      children.addAll([
+    final helpCards = FutureBuilder<Widget>(
+      future: Future.value(
+          Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
+      builder: (_, data) {
+        if (data.hasData) {
+          if (isIncomingOnly) {
+            if (isInHomePage()) {
+              Future.delayed(Duration(milliseconds: 300), () {
+                _updateWindowSize();
+              });
+            }
+          }
+          return data.data!;
+        } else {
+          return const Offstage();
+        }
+      },
+    );
+    final footer = <Widget>[
+      if (isIncomingOnly) ...[
         Divider(),
         OnlineStatusWidget(
           onSvcStatusChanged: () {
@@ -123,9 +123,22 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             }
           },
         ).marginOnly(bottom: 6, right: 6)
-      ]);
-    }
+      ],
+    ];
     final textColor = Theme.of(context).textTheme.titleLarge?.color;
+    final scrollableCards = Scrollbar(
+      controller: _leftPaneScrollController,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _leftPaneScrollController,
+        child: Column(
+          children: [
+            helpCards,
+            ...footer,
+          ],
+        ),
+      ),
+    );
     return ChangeNotifierProvider.value(
       value: gFFI.serverModel,
       child: Container(
@@ -135,14 +148,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           children: [
             Column(
               children: [
-                SingleChildScrollView(
-                  controller: _leftPaneScrollController,
-                  child: Column(
+                ...header,
+                if (isIncomingOnly)
+                  Column(
                     key: _childKey,
-                    children: children,
-                  ),
-                ),
-                Expanded(child: Container())
+                    children: [
+                      helpCards,
+                      ...footer,
+                    ],
+                  )
+                else
+                  Expanded(child: scrollableCards),
               ],
             ),
             if (isOutgoingOnly)
@@ -608,11 +624,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  Color.fromARGB(255, 226, 66, 188),
-                  Color.fromARGB(255, 244, 114, 124),
+                  MyTheme.navy,
+                  MyTheme.accent,
                 ],
               )),
-              padding: EdgeInsets.all(20),
+              padding: EdgeInsets.all(16),
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,11 +649,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           Text(
                             translate(content),
                             style: TextStyle(
-                                height: 1.5,
+                                height: 1.4,
                                 color: Colors.white,
                                 fontWeight: FontWeight.normal,
                                 fontSize: 13),
-                          ).marginOnly(bottom: 20)
+                          ).marginOnly(bottom: 16)
                       ] +
                       (btnText.isNotEmpty
                           ? <Widget>[
@@ -651,8 +667,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                       text: translate(btnText),
                                       textColor: Colors.white,
                                       borderColor: Colors.white,
-                                      textSize: 20,
-                                      radius: 10,
+                                      textSize: 18,
+                                      radius: 6,
                                       onTap: onPressed,
                                     )
                                   ])

@@ -72,11 +72,6 @@ class DesktopSettingPage extends StatefulWidget {
         bind.mainGetBuildinOption(key: kOptionHideNetworkSetting) != 'Y')
       SettingsTabKey.network,
     if (!bind.isIncomingOnly()) SettingsTabKey.display,
-    if (!bind.isDisableAccount()) SettingsTabKey.account,
-    if (isWindows &&
-        !bind.isDisableSettings() &&
-        bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
-      SettingsTabKey.printer,
     SettingsTabKey.about,
   ];
 
@@ -1750,6 +1745,12 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
   final scrollController = ScrollController();
 
   @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
     return ListView(controller: scrollController, children: [
@@ -1761,9 +1762,124 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
         block: locked,
         child: Column(children: [
           network(context),
+          api(context),
         ]),
       ),
     ]).marginOnly(bottom: _kListViewBottomMargin);
+  }
+
+  Future<void> _editApiOption(
+      String title, String optionKey, bool obscure) async {
+    final controller = TextEditingController(
+        text: bind.mainGetLocalOption(key: optionKey));
+    final obscureRx = obscure.obs;
+    gFFI.dialogManager.show((setState, close, context) {
+      submit() async {
+        await bind.mainSetLocalOption(
+            key: optionKey, value: controller.text.trim());
+        close();
+        this.setState(() {});
+      }
+
+      return CustomAlertDialog(
+        title: Text(translate(title)),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 420),
+          child: Obx(() => TextField(
+                controller: controller,
+                obscureText: obscureRx.value,
+                autocorrect: false,
+                enableSuggestions: false,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: translate(title),
+                  suffixIcon: obscure
+                      ? IconButton(
+                          icon: Icon(obscureRx.value
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          onPressed: () => obscureRx.value = !obscureRx.value,
+                        )
+                      : null,
+                ),
+                onSubmitted: (_) => submit(),
+              ).workaroundFreezeLinuxMint()),
+        ),
+        actions: [
+          dialogButton('Cancel', onPressed: close, isOutline: true),
+          dialogButton('OK', onPressed: submit),
+        ],
+        onSubmit: submit,
+        onCancel: close,
+      );
+    });
+  }
+
+  Widget api(BuildContext context) {
+    final divider = const Divider(height: 1, indent: 16, endIndent: 16);
+
+    Widget listTile({
+      required IconData icon,
+      required String title,
+      required String optionKey,
+      bool obscure = false,
+    }) {
+      final value = bind.mainGetLocalOption(key: optionKey);
+      final subtitle = value.isEmpty
+          ? null
+          : (obscure ? '••••••••' : value);
+      return ListTile(
+        leading: Icon(icon, color: _accentColor),
+        title: Text(
+          translate(title),
+          style: TextStyle(fontSize: _kContentFontSize),
+        ),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).hintColor,
+                ),
+              ),
+        enabled: !locked,
+        onTap: locked
+            ? null
+            : () => _editApiOption(title, optionKey, obscure),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        minLeadingWidth: 0,
+        horizontalTitleGap: 10,
+      );
+    }
+
+    return _Card(
+      title: 'API',
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            listTile(
+              icon: Icons.link_outlined,
+              title: 'API URL',
+              optionKey: kOptionApiUrl,
+            ),
+            divider,
+            listTile(
+              icon: Icons.key_outlined,
+              title: 'API key',
+              optionKey: kOptionApiKey,
+              obscure: true,
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   Widget network(BuildContext context) {

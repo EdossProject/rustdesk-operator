@@ -365,8 +365,6 @@ class _PeerTabPageState extends State<PeerTabPage>
           child: Row(
             children: [
               deleteSelection(),
-              addSelectionToFav(),
-              addSelectionToAb(),
               editSelectionTags(),
             ],
           ),

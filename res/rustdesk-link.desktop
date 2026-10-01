@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=RustDesk
+Name=EdossDesk
 NoDisplay=true
-MimeType=x-scheme-handler/rustdesk;
+MimeType=x-scheme-handler/edossdesk;
 TryExec=rustdesk
 Exec=rustdesk %u
 Icon=rustdesk
